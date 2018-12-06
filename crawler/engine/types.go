@@ -12,6 +12,7 @@ type ParseResult struct {
 	Items    []interface{}
 }
 
+// 空解析方法
 func NilParseFunc([]byte) ParseResult {
 	return ParseResult{}
 }
