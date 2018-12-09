@@ -9,9 +9,14 @@ import (
 	"golang.org/x/text/transform"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
+// 100毫秒执行一次请求
+var rateLimiter = time.Tick(100 * time.Millisecond)
+
 func Fetch(url string) ([]byte, error) {
+	<-rateLimiter
 	resp, err := http.Get(url)
 	if err != nil {
 		panic(err)
