@@ -468,7 +468,7 @@ s[i]不可以超越len(s)，向后扩展不可以超越底层数组cap(s)
 arr := [...]int{0, 1, 2, 3, 4, 5, 6, 7}
 s := arr[:] // [0 1 2 3 4 5 6 7]
 s = s[2:6] // s=[2 3 4 5], len(s)=4, cap(s)=6
-s = s[3:5] // [5 6]，这里取到了s[5]
+s = s[3:5] // [5 6]，这里取到了s[5]=6
 ```
 添加元素时如果超越cap，系统会重新分配更大的底层数组<br>
 由于是值传递的关系，必须接收append的返回值，s = append(s, val)
@@ -845,6 +845,42 @@ github：
  描述事物的外部行为而非内部结构
  ```
  
+ ```
+package main
+
+import "fmt"
+
+type ISayHello interface {
+    SayHello()
+}
+
+type Person struct{}
+
+func (person Person) SayHello() {
+    fmt.Printf("Hello!")
+}
+
+type Duck struct{}
+
+func (duck Duck) SayHello() {
+    fmt.Printf("ga ga ga!")
+}
+
+func greeting(i ISayHello) {
+    i.SayHello()
+}
+
+func main() {
+    person := Person{}
+    duck := Duck{}
+    var i ISayHello
+    i = person
+    greeting(i)
+    i = duck
+    greeting(i) // Hello! ga ga ga
+}
+```
+
 ### 接口
 接口由使用者定义
 ```
@@ -1031,19 +1067,20 @@ func main() {
 ```
 ### 函数式编程
 ```
-参数，变量，返回值都可以是函数
+函数是一等公民：参数，变量，返回值都可以是函数
 ```
 "正统"函数式编程
 ```
 不可变性：不能有状态，只有常量和函数
 函数只有一个参数
 ```
-闭包
+闭包<br>
+<img src="http://flowerman.cc/golang/1.png" width = 60% />
 ```
 func adder() func(int) int {
-	sum := 0
+	sum := 0   
 	return func(v int) int {
-		sum += v
+		sum += v    // v：参数，局部变量，sum：自由变量
 		return sum
 	}
 }
@@ -1099,7 +1136,7 @@ func fibonacci() func() int {
 
 func main() {
 	f := fibonacci()
-	fmt.Println(f(), f(), f(), f(), f(), f(), f(), f(), f())
+	fmt.Println(f(), f(), f(), f(), f(), f(), f(), f(), f())  // 1，1，2，3，5，8，13，21，34
 }
 ```
 
@@ -1405,7 +1442,6 @@ func channel() {
 	var channels [10]chan<- int // 可以给chan方向，chan<-只可以发数据，<-chan只可以收数据
 	for i := 0; i < 10; i++ {
 		channels[i] = createWorker(i)
-		go createWorker(i)
 	}
 	for j := 0; j < 10; j++ {
 		channels[j] <- 'a' + j
@@ -1490,10 +1526,10 @@ type worker struct {
 }
 
 func doWorker(id int, c chan int, done chan bool) {
-	for n := range c {
+	for n := range c { // 这一步算作收，没有会阻塞住
 		fmt.Printf("worker %d reveived %c\n", id, n)
 		go func() {
-			done <- true // 这一步是解决死锁的关键
+			done <- true // 这一步是解决阻塞的关键，没有方法收done，就会阻塞住
 		}()
 	}
 }
@@ -1511,7 +1547,6 @@ func channel() {
 	var workers [10]worker
 	for i := 0; i < 10; i++ {
 		workers[i] = createWorker(i)
-		go createWorker(i)
 	}
 	for j, worker := range workers {
 		worker.in <- 'a' + j
@@ -1673,23 +1708,23 @@ func main() {
 			activeValue = values[0]
 		}
 		select {
-		case n := <-c1:
-			values = append(values, n)
-		case n := <-c2:
-			values = append(values, n)
-		case activeWorker <- activeValue:
-			values = values[1:]
-		case <-time.After(800 * time.Millisecond):
-			fmt.Println("超时")
-		case <-tick:
-			fmt.Println("队列长度：", len(values))
-		case <-after:
-			fmt.Println("运行10s结束")
-			return
-		/*
-		default:
-			fmt.Println("默认")
-		*/
+    		case n := <-c1:
+    			values = append(values, n)
+    		case n := <-c2:
+    			values = append(values, n)
+    		case activeWorker <- activeValue:
+    			values = values[1:]
+    		case <-time.After(800 * time.Millisecond):
+    			fmt.Println("超时")
+    		case <-tick:
+    			fmt.Println("队列长度：", len(values))
+    		case <-after:
+    			fmt.Println("运行10s结束")
+    			return
+    		/*
+    		default:
+    			fmt.Println("默认")
+    		*/
 		}
 	}
 }
