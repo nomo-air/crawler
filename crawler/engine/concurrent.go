@@ -37,7 +37,9 @@ func (e *ConcurrentEngine) Run(seed ...Request) {
 		result := <-out
 		for _, item := range result.Items {
 			//log.Warn("Got Item: #%d %v", itemCount, item)
-			go func() { e.ItemChan <- item }()
+			go func() {
+				e.ItemChan <- item
+			}()
 		}
 		for _, r := range result.Requests {
 			if IsDuplicate(r.Url) {
