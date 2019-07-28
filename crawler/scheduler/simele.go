@@ -2,6 +2,8 @@ package scheduler
 
 import "go_crawler/crawler/engine"
 
+// 简单的并发处理
+// 所有工作协程，共用一个输入通道
 type SimpleScheduler struct {
 	WorkerChan chan engine.Request
 }
@@ -18,10 +20,8 @@ func (s *SimpleScheduler) WorkerReady(chan engine.Request) {
 
 }
 
-func (s *SimpleScheduler) Submit(request ...engine.Request) {
+func (s *SimpleScheduler) Submit(request engine.Request) {
 	go func() {
-		for _, r := range request {
-			s.WorkerChan <- r
-		}
+		s.WorkerChan <- request
 	}()
 }

@@ -1,17 +1,17 @@
 package engine
 
-import "github.com/gpmgo/gopm/modules/log"
-
 // 并发的引擎
 // 引擎将请求发送给调度器，调度器纷发给workers, workers的结果再返回给引擎
 // 所有worker 引用一个源
 type ConcurrentEngine struct {
 	MaxWorkerCount int
-	Scheduler
+	Scheduler      Scheduler
+	ItemChan       chan Item
 }
 type Scheduler interface {
-	Submit(request ...Request)
+	Submit(request Request)
 	GetWorkerChan() chan Request
+
 	Run()
 	Ready
 }
@@ -20,22 +20,31 @@ type Ready interface {
 }
 
 func (e *ConcurrentEngine) Run(seed ...Request) {
-	out := make(chan ParseResult)
+	out := make(chan ParseResult, 1024)
 	e.Scheduler.Run()
 
 	for i := 0; i < e.MaxWorkerCount; i++ {
 		e.createWorker(e.Scheduler.GetWorkerChan(), out, e.Scheduler)
 	}
+	for _, r := range seed {
+		if IsDuplicate(r.Url) {
+			continue
+		}
+		e.Scheduler.Submit(r)
+	}
 
-	e.Scheduler.Submit(seed...)
-	var count = 0
 	for {
 		result := <-out
 		for _, item := range result.Items {
-			count++
-			log.Warn("Got Item: #%d %v", count, item)
+			//log.Warn("Got Item: #%d %v", itemCount, item)
+			go func() { e.ItemChan <- item }()
 		}
-		e.Scheduler.Submit(result.Requests...)
+		for _, r := range result.Requests {
+			if IsDuplicate(r.Url) {
+				continue
+			}
+			e.Scheduler.Submit(r)
+		}
 	}
 
 }
